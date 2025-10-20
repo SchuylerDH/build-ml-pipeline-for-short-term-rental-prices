@@ -5,10 +5,30 @@ entry_points:
   main:
     parameters:
 
-      parameters:
-        description: ## ADD DESCRIPTION
+      input_artifact:
+        description: name of the sample that is the input
+        type: string
+
+      output_artifact:
+        description: name of the output adter cleaned
+        type: string
+
+      output_type:
+        description: cleaned version of the input data usually in csv
+        type: string
+
+      output_description:
+        description: cleaned data
+        type: string
+
+      min_price:
+        description: minimum set room price per night
+        type: string
+
+      max_price:
+        description: maximum set room price per night
         type: string
 
 
     command: >-
-        python run.py  --parameters {parameters} 
+        python run.py  --input_artifact {input_artifact}  --output_artifact {output_artifact}  --output_type {output_type}  --output_description {output_description}  --min_price {min_price}  --max_price {max_price} 
