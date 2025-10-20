@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 This script splits the provided dataframe in test and remainder
 """
@@ -6,6 +5,7 @@ import argparse
 import logging
 import pandas as pd
 import wandb
+import os
 import tempfile
 from sklearn.model_selection import train_test_split
 from wandb_utils.log_artifact import log_artifact
@@ -16,38 +16,37 @@ logger = logging.getLogger()
 
 def go(args):
 
-    run = wandb.init(job_type="train_val_test_split")
+    run = wandb.init(job_type="data_split")
     run.config.update(args)
 
-    # Download input artifact. This will also note that this script is using this
-    # particular version of the artifact
-    logger.info(f"Fetching artifact {args.input}")
+    logging.info(f"Downloading artifact {args.input}")
     artifact_local_path = run.use_artifact(args.input).file()
-
+    
     df = pd.read_csv(artifact_local_path)
+    
+    logger.info("Splitting the dataset")
+    train_val, test = train_test_split(df, test_size=args.test_size, random_state=args.random_seed,
+                                       stratify=df[args.stratify_by] if args.stratify_by != "none" else None)
+    
+    for df, split in zip([train_val, test], ["trainval", "test"]):
+        logging.info(f"Uploading the {split}_data.csv dataset")
 
-    logger.info("Splitting trainval and test")
-    trainval, test = train_test_split(
-        df,
-        test_size=args.test_size,
-        random_state=args.random_seed,
-        stratify=df[args.stratify_by] if args.stratify_by != 'none' else None,
-    )
-
-    # Save to output files
-    for df, k in zip([trainval, test], ['trainval', 'test']):
-        logger.info(f"Uploading {k}_data.csv dataset")
-        with tempfile.NamedTemporaryFile("w") as fp:
+        with tempfile.NamedTemporaryFile("w",suffix="csv",delete=False) as fp:   
 
             df.to_csv(fp.name, index=False)
 
-            log_artifact(
-                f"{k}_data.csv",
-                f"{k}_data",
-                f"{k} split of dataset",
-                fp.name,
-                run,
+            artifact = wandb.Artifact(
+                name=f"{split}_data.csv",
+                type=f"{split}_data",
+                description=f"{split}_split_of_dataset",
             )
+            
+            artifact.add_file(fp.name)
+            
+            logger.info(f"Logging artifact {split}_data.csv dataset")
+            run.log_artifact(artifact)
+            
+            artifact.wait()
 
 
 if __name__ == "__main__":

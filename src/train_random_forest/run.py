@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 import mlflow
 import json
-
+import yaml
 import pandas as pd
 import numpy as np
 from sklearn.compose import ColumnTransformer
@@ -44,17 +44,18 @@ def go(args):
     run.config.update(args)
 
     # Get the Random Forest configuration and update W&B
+    # with open(args.rf_config) as fp:
+    #     rf_config = json.load(fp)
     with open(args.rf_config) as fp:
-        rf_config = json.load(fp)
+        rf_config = yaml.safe_load(fp)
     run.config.update(rf_config)
-
     # Fix the random seed for the Random Forest, so we get reproducible results
     rf_config['random_state'] = args.random_seed
 
     ######################################
     # Use run.use_artifact(...).file() to get the train and validation artifact (args.trainval_artifact)
     # and save the returned path in train_local_pat
-    trainval_local_path = # YOUR CODE HERE
+    trainval_local_path = run.use_artifact(args.trainval_artifact).file()
     ######################################
 
     X = pd.read_csv(trainval_local_path)
@@ -75,7 +76,7 @@ def go(args):
 
     ######################################
     # Fit the pipeline sk_pipe by calling the .fit method on X_train and y_train
-    # YOUR CODE HERE
+    sk_pipe.fit(X_train, y_train)
     ######################################
 
     # Compute r2 and MAE
@@ -97,7 +98,7 @@ def go(args):
     ######################################
     # Save the sk_pipe pipeline as a mlflow.sklearn model in the directory "random_forest_dir"
     # HINT: use mlflow.sklearn.save_model
-    # YOUR CODE HERE
+    mlflow.sklearn.save_model(sk_pipe, "random_forest_dir")
     ######################################
 
     ######################################
@@ -106,7 +107,14 @@ def go(args):
     # type, provide a description and add rf_config as metadata. Then, use the .add_dir method of the artifact instance
     # you just created to add the "random_forest_dir" directory to the artifact, and finally use
     # run.log_artifact to log the artifact to the run
-    # YOUR CODE HERE
+    model_artifact = wandb.Artifact(
+    args.output_artifact,
+    type="model_export",
+    description="Random Forest model trained on Airbnb dataset",
+    metadata=rf_config
+    )
+    model_artifact.add_dir("random_forest_dir")
+    run.log_artifact(model_artifact)
     ######################################
 
     # Plot feature importance
@@ -116,7 +124,7 @@ def go(args):
     # Here we save r_squared under the "r2" key
     run.summary['r2'] = r_squared
     # Now log the variable "mae" under the key "mae".
-    # YOUR CODE HERE
+    run.summary['mae'] = mae
     ######################################
 
     # Upload to W&B the feture importance visualization
@@ -133,11 +141,13 @@ def plot_feature_importance(pipe, feat_names):
     # For the NLP feature we sum across all the TF-IDF dimensions into a global
     # NLP importance
     nlp_importance = sum(pipe["random_forest"].feature_importances_[len(feat_names) - 1:])
-    feat_imp = np.asarray(np.append(feat_imp, nlp_importance))  # Using np.asarray for future compatibility
-    fig_feat_imp, sub_feat_imp = plt.subplots(figsize=(10, 10), layout='constrained')  # Using constrained layout
-    sub_feat_imp.bar(np.arange(feat_imp.shape[0]), feat_imp, color="r", align="center")
-    sub_feat_imp.set_xticks(np.arange(feat_imp.shape[0]))
-    sub_feat_imp.set_xticklabels(feat_names, rotation=90)
+    feat_imp = np.append(feat_imp, nlp_importance)
+    fig_feat_imp, sub_feat_imp = plt.subplots(figsize=(10, 10))
+    # idx = np.argsort(feat_imp)[::-1]
+    sub_feat_imp.bar(range(feat_imp.shape[0]), feat_imp, color="r", align="center")
+    _ = sub_feat_imp.set_xticks(range(feat_imp.shape[0]))
+    _ = sub_feat_imp.set_xticklabels(np.array(feat_names), rotation=90)
+    fig_feat_imp.tight_layout()
     return fig_feat_imp
 
 
@@ -156,7 +166,10 @@ def get_inference_pipeline(rf_config, max_tfidf_features):
     # Build a pipeline with two steps:
     # 1 - A SimpleImputer(strategy="most_frequent") to impute missing values
     # 2 - A OneHotEncoder() step to encode the variable
-    non_ordinal_categorical_preproc = # YOUR CODE HERE
+    non_ordinal_categorical_preproc =  Pipeline(steps=[
+    ("imputer", SimpleImputer(strategy="most_frequent")),
+    ("onehot", OneHotEncoder(handle_unknown="ignore"))
+    ])
     ######################################
 
     # Let's impute the numerical columns to make sure we can handle missing values
@@ -215,7 +228,10 @@ def get_inference_pipeline(rf_config, max_tfidf_features):
     # ColumnTransformer instance that we saved in the `preprocessor` variable, and a step called "random_forest"
     # with the random forest instance that we just saved in the `random_forest` variable.
     # HINT: Use the explicit Pipeline constructor so you can assign the names to the steps, do not use make_pipeline
-    sk_pipe = # YOUR CODE HERE
+    sk_pipe = Pipeline(steps=[
+    ("preprocessor", preprocessor),
+    ("random_forest", random_Forest)
+    ])
 
     return sk_pipe, processed_features
 
@@ -274,5 +290,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
 
     go(args)
