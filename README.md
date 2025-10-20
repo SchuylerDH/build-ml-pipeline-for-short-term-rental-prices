@@ -6,6 +6,8 @@ The second project for the [ML DevOps Engineer Nanodegree](https://www.udacity.c
 ## Description
 
 This project is part of Unit 3: Building a Reproducible Model Workflow. 
+[GITHUB](https://github.com/SchuylerDH/build-ml-pipeline-for-short-term-rental-prices)
+[WANDB](https://wandb.ai/schuyler-helder-s/nyc_airbnb?nw=nwuserschuylerhelder)
 
 ## Prerequisites
 
