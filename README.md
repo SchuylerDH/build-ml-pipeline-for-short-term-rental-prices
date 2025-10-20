@@ -1,3 +1,5 @@
+21131bdfa76112eaeacbd46b756fd81bb5dd92ce
+
 # Build an ML Pipeline for Short-Term Rental Prices in NYC
 You are working for a property management company renting rooms and properties for short periods of 
 time on various rental platforms. You need to estimate the typical price for a given property based 
