@@ -24,10 +24,10 @@ def test_column_names(data):
         "availability_365",
     ]
 
-    these_columns = data.columns.to_numpy()  # Using to_numpy() for better performance
+    these_columns = data.columns.values
 
     # This also enforces the same order
-    assert np.array_equal(expected_colums, these_columns)  # Using numpy comparison for better performance
+    assert list(expected_colums) == list(these_columns)
 
 
 def test_neighborhood_names(data):
@@ -63,3 +63,14 @@ def test_similar_neigh_distrib(data: pd.DataFrame, ref_data: pd.DataFrame, kl_th
 ########################################################
 # Implement here test_row_count and test_price_range   #
 ########################################################
+def test_row_count(data): 
+    """
+    Checks that the size of the dataset is reasonable
+    """
+    assert 15000 < data.shape[0] < 1000000
+
+def test_price_range(data: pd.DataFrame, min_price: float, max_price: float):
+    """
+    Check if the price is between the min and max range of values
+    """
+    assert data['price'].between(min_price, max_price).all()
